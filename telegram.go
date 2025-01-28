@@ -13,10 +13,10 @@ import (
 	"os"
 )
 
-const botToken = "7557709232:AAFX-J_Bd3QgLD5TQWa1z7vc7Z94CVhSfvk"
-const urlTelegram = "https://api.telegram.org"
-
-// const chatID = "7557709232"
+type Telegram struct {
+	URL      string
+	BotToken string
+}
 
 type Update struct {
 	UpdateID int `json:"update_id"`
@@ -48,8 +48,8 @@ type WebhookInfo struct {
 	} `json:"result"`
 }
 
-func SetWebHook(urlWebHook string) error {
-	apiURL := fmt.Sprintf(urlTelegram+"/bot%s/setWebhook?url=%s", botToken, urlWebHook)
+func (t Telegram) SetWebHook(urlWebHook string) error {
+	apiURL := fmt.Sprintf(t.URL+"/bot%s/setWebhook?url=%s", t.BotToken, urlWebHook)
 	// Criar buffer para armazenar o body da requisição
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -100,8 +100,8 @@ func SetWebHook(urlWebHook string) error {
 	return nil
 }
 
-func DeleteWebHook() error {
-	apiURL := fmt.Sprintf(urlTelegram+"/bot%s/deleteWebhook", botToken)
+func (t Telegram) DeleteWebHook() error {
+	apiURL := fmt.Sprintf(t.URL+"/bot%s/deleteWebhook", t.BotToken)
 	slog.Debug(apiURL)
 	// Criando os dados do POST
 	data := url.Values{}
@@ -124,26 +124,26 @@ func DeleteWebHook() error {
 	return nil
 }
 
-func GetWebHookInfo() (*WebhookInfo, error) {
-	apiURL := fmt.Sprintf(urlTelegram+"/bot%s/getWebhookInfo", botToken)
+func (t Telegram) GetWebHookInfo() (*WebhookInfo, error) {
+	apiURL := fmt.Sprintf(t.URL+"/bot%s/getWebhookInfo", t.BotToken)
 	slog.Debug(apiURL)
 
 	resp, err := http.Get(apiURL)
 	if err != nil {
-		slog.Error("Erro ao fazer a requisição:", err)
+		slog.Error("Erro ao fazer a requisição: " + err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		slog.Error("Erro ao ler resposta:", err)
+		slog.Error("Erro ao ler resposta:" + err.Error())
 		return nil, err
 	}
 
 	var info WebhookInfo
 	if err := json.Unmarshal(body, &info); err != nil {
-		slog.Error("Erro ao decodificar JSON:", err)
+		slog.Error("Erro ao decodificar JSON:" + err.Error())
 		return nil, err
 	}
 
@@ -152,8 +152,8 @@ func GetWebHookInfo() (*WebhookInfo, error) {
 	return &info, nil
 }
 
-func GetUpdates(offset int) ([]Update, error) {
-	url := fmt.Sprintf(urlTelegram+"/bot%s/getUpdates?offset=%d", botToken, offset)
+func (t Telegram) GetUpdates(offset int) ([]Update, error) {
+	url := fmt.Sprintf(t.URL+"/bot%s/getUpdates?offset=%d", t.BotToken, offset)
 	slog.Debug(url)
 
 	resp, err := http.Get(url)
@@ -174,14 +174,14 @@ func GetUpdates(offset int) ([]Update, error) {
 	}
 
 	if !updates.Ok {
-		return nil, fmt.Errorf("erro ao buscar updates")
+		return nil, fmt.Errorf("Fail to get updades!")
 	}
 
 	return updates.Result, nil
 }
 
-func SendMessage(chatID int, message string) error {
-	apiURL := fmt.Sprintf(urlTelegram+"/bot%s/sendMessage", botToken)
+func (t Telegram) SendMessage(chatID int, message string) error {
+	apiURL := fmt.Sprintf(t.URL+"/bot%s/sendMessage", t.BotToken)
 
 	// Criando os dados do POST
 	data := url.Values{}
@@ -196,31 +196,31 @@ func SendMessage(chatID int, message string) error {
 	}
 	defer resp.Body.Close()
 
-	slog.Info("messeger :: SendMessage :: status code -> " + fmt.Sprint(resp.StatusCode))
+	slog.Info("telegram :: SendMessage :: status code -> " + fmt.Sprint(resp.StatusCode))
 
 	// Verifica se a resposta foi bem-sucedida
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("falha ao enviar mensagem, status: %d", resp.StatusCode)
+		return fmt.Errorf("Fail to send message, status: %d" + fmt.Sprint(resp.StatusCode))
 	}
 
 	return nil
 }
 
-func WebhookHandler(w http.ResponseWriter, r *http.Request) {
+func (t Telegram) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Erro ao ler corpo da requisição", http.StatusBadRequest)
+		http.Error(w, "Fail to read request body!", http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
 	var update Update
 	if err := json.Unmarshal(body, &update); err != nil {
-		http.Error(w, "Erro ao processar JSON", http.StatusInternalServerError)
+		http.Error(w, "Fail to processa json!", http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Printf("Mensagem recebida: %s\n", update.Message.Text)
+	slog.Info("telegram :: WebhookHandler :: message -> " + update.Message.Text)
 
 	w.WriteHeader(http.StatusOK)
 }
