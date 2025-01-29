@@ -3,6 +3,7 @@ package messeger
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -11,8 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-
-	"github.com/pkg/errors"
 )
 
 type Telegram struct {
