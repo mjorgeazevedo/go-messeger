@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/pkg/errors"
 )
 
 type Telegram struct {
@@ -173,8 +175,10 @@ func (t Telegram) GetUpdates(offset int) ([]Update, error) {
 		return nil, err
 	}
 
+	slog.Debug(string(body))
+
 	if !updates.Ok {
-		return nil, fmt.Errorf("Fail to get updades!")
+		return nil, errors.New("Fail to get updades!")
 	}
 
 	return updates.Result, nil
